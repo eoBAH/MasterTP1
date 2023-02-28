@@ -1,5 +1,10 @@
 package fr.openium.mastertp1_2.model
 
-class MemeList {
-    var memesList = mutableListOf<Meme>()
-}
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+
+data class MemeList (
+
+    val memesList: List<Meme>
+    )

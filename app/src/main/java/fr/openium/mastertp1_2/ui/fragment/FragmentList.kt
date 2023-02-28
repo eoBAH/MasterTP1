@@ -12,8 +12,10 @@ import androidx.fragment.app.setFragmentResultListener
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.gson.Gson
 import fr.openium.mastertp1_2.R
 import fr.openium.mastertp1_2.adapter.CustomAdapter
+import fr.openium.mastertp1_2.model.Meme
 import fr.openium.mastertp1_2.model.MemeResponse
 import fr.openium.mastertp1_2.utils.IntentIntegrator
 import io.ktor.client.*
@@ -33,6 +35,7 @@ class ListFragment : Fragment(), CustomAdapter.AdapterListener {
 
     private var adapter: CustomAdapter? = null
     private var arrayList: ArrayList<String> = arrayListOf<String>()
+    private var arrayListMeme = ArrayList<Meme>()
     private var intentIntegrator: IntentIntegrator? = null
     private var recyclerView: RecyclerView? = null
 
@@ -64,10 +67,10 @@ class ListFragment : Fragment(), CustomAdapter.AdapterListener {
         super.onViewCreated(view, savedInstanceState)
         recyclerView = view.findViewById<RecyclerView>(R.id.fragment_list_RecyclerView)
         recyclerView?.layoutManager = LinearLayoutManager(activity)
+        loadDataFromNetwork();
+        //adapter = CustomAdapter(arrayListMeme)
 
-        adapter = CustomAdapter(this,arrayList)
-
-        recyclerView?.adapter = adapter
+        //recyclerView?.adapter = adapter
 
         var buttonScan = view.findViewById<Button>(R.id.fragment_list_button_scan)
         buttonScan?.setOnClickListener {
@@ -100,25 +103,20 @@ class ListFragment : Fragment(), CustomAdapter.AdapterListener {
 
     private fun loadDataFromNetwork(){
         CoroutineScope(Dispatchers.IO).launch {
-            //Appel avec l'API
-            val client = HttpClient(CIO){
-                install(ContentNegotiation){
-                    json(Json{
-                        ignoreUnknownKeys = true
-                    })
-                }
-            }
 
+            val client = HttpClient(CIO)
             val response: HttpResponse = client.get("https://api.imgflip.com/get_memes")
             println(response.status)
+            val gson = Gson()
+            val data: String = response.bodyAsText()
+            val memeResponse: MemeResponse = gson.fromJson(data, MemeResponse::class.java)
 
-            val data = response.body<MemeResponse>()
+            arrayListMeme = memeResponse.data.memesList as ArrayList<Meme>
 
             client.close()
             withContext(Dispatchers.Main){
-                //Faire un traitement sur MainThread
-                arrayList.clear()
-                //data.data?.memesList?.let {arrayList.addAll(it)}
+                adapter = CustomAdapter(arrayListMeme)
+                recyclerView?.adapter = adapter
             }
         }
     }

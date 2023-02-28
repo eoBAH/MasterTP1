@@ -1,9 +1,10 @@
 package fr.openium.mastertp1_2.model
 
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
-class MemeResponse {
-    var success: Boolean? = null
-    var data: MemeList? = null
-    var errorMessage: String? = null
-}
+
+data class MemeResponse (
+    var success: Boolean,
+    var data: MemeList
+)
