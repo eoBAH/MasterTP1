@@ -1,5 +1,6 @@
 package fr.openium.mastertp1_2.ui.fragment
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -12,9 +13,11 @@ import androidx.fragment.app.setFragmentResultListener
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.room.Room
 import com.google.gson.Gson
 import fr.openium.mastertp1_2.R
 import fr.openium.mastertp1_2.adapter.CustomAdapter
+import fr.openium.mastertp1_2.database.AppDatabase
 import fr.openium.mastertp1_2.model.Meme
 import fr.openium.mastertp1_2.model.MemeResponse
 import fr.openium.mastertp1_2.utils.IntentIntegrator
@@ -53,6 +56,7 @@ class ListFragment : Fragment(), CustomAdapter.AdapterListener {
             val todoTitle = bundle.getString(FragmentAdd.KEY_TITLE)
             addOrModifyToListAndRefresh(todoId, todoTitle)
         }
+
     }
 
     override fun onCreateView(
@@ -67,8 +71,34 @@ class ListFragment : Fragment(), CustomAdapter.AdapterListener {
         super.onViewCreated(view, savedInstanceState)
         recyclerView = view.findViewById<RecyclerView>(R.id.fragment_list_RecyclerView)
         recyclerView?.layoutManager = LinearLayoutManager(activity)
-        loadDataFromNetwork();
+        //loadDataFromNetwork();
         //adapter = CustomAdapter(arrayListMeme)
+
+        val db = Room.databaseBuilder(
+                requireContext(),
+                AppDatabase::class.java, "database_memes"
+            ).allowMainThreadQueries().build()
+
+        val memeDao = db.memeDao()
+        val dataFromDb: ArrayList<Meme> = memeDao.getAll() as ArrayList<Meme>
+
+        if(dataFromDb?.isEmpty() == true){
+
+            loadDataFromNetwork();
+            memeDao.insertAll(arrayListMeme)
+
+        }else{
+
+            CoroutineScope(Dispatchers.IO).launch {
+
+                withContext(Dispatchers.Main){
+                    adapter = CustomAdapter(dataFromDb)
+                    recyclerView?.adapter = adapter
+                    adapter?.notifyDataSetChanged()
+                }
+            }
+
+        }
 
         //recyclerView?.adapter = adapter
 
@@ -108,15 +138,19 @@ class ListFragment : Fragment(), CustomAdapter.AdapterListener {
             val response: HttpResponse = client.get("https://api.imgflip.com/get_memes")
             println(response.status)
             val gson = Gson()
-            val data: String = response.bodyAsText()
-            val memeResponse: MemeResponse = gson.fromJson(data, MemeResponse::class.java)
+            val dataMeme: String = response.bodyAsText()
+            println(dataMeme)
+            val memeResponse: MemeResponse = gson.fromJson(dataMeme,MemeResponse::class.java)
 
-            arrayListMeme = memeResponse.data.memesList as ArrayList<Meme>
+            arrayListMeme = memeResponse.data.memesList
+
+            //memeDao.insertAll(memes)
 
             client.close()
             withContext(Dispatchers.Main){
                 adapter = CustomAdapter(arrayListMeme)
                 recyclerView?.adapter = adapter
+                adapter?.notifyDataSetChanged()
             }
         }
     }
